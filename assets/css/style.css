@@ -1,0 +1,193 @@
+
+/* ==========================================================
+   Innovation Dashboard
+   Global Design System
+   Version : 1.0.0
+========================================================== */
+
+:root{
+    --primary:#0d6efd;
+    --success:#198754;
+    --warning:#ffc107;
+    --orange:#fd7e14;
+    --danger:#dc3545;
+    --dark:#212529;
+    --light:#f8f9fa;
+    --white:#ffffff;
+    --border:#dee2e6;
+
+    --radius:14px;
+    --shadow:0 8px 24px rgba(0,0,0,.08);
+    --transition:.25s ease;
+}
+
+body{
+    background:var(--light);
+    color:var(--dark);
+    font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
+}
+
+.wrapper{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+
+main{
+    flex:1;
+}
+
+/* ---------- Cards ---------- */
+
+.dashboard-card,
+.summary-card,
+.opd-card{
+    background:var(--white);
+    border:none;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    transition:all var(--transition);
+}
+
+.dashboard-card:hover,
+.summary-card:hover,
+.opd-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 14px 30px rgba(0,0,0,.12);
+}
+
+/* ---------- Summary ---------- */
+
+.summary-card{
+    padding:1.5rem;
+}
+
+.summary-title{
+    color:#6c757d;
+    font-size:.9rem;
+    font-weight:600;
+    margin-bottom:.35rem;
+}
+
+.summary-value{
+    font-size:2rem;
+    font-weight:700;
+}
+
+/* ---------- OPD Card ---------- */
+
+.opd-card{
+    overflow:hidden;
+}
+
+.card-indicator{
+    height:6px;
+}
+
+.indicator-success{
+    background:var(--success);
+}
+
+.indicator-warning{
+    background:var(--warning);
+}
+
+.indicator-orange{
+    background:var(--orange);
+}
+
+.indicator-danger{
+    background:var(--danger);
+}
+
+.card-body-custom{
+    padding:1.5rem;
+}
+
+.card-title-opd{
+    font-size:1.05rem;
+    font-weight:700;
+    min-height:52px;
+}
+
+.card-stat{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:.55rem;
+}
+
+.card-stat span:last-child{
+    font-weight:700;
+}
+
+.ratio-box{
+    background:#eef4ff;
+    border-radius:10px;
+    padding:.75rem;
+    text-align:center;
+    margin-top:1rem;
+}
+
+.rank-badge{
+    position:absolute;
+    top:15px;
+    right:15px;
+    border-radius:999px;
+    background:var(--primary);
+    color:#fff;
+    padding:.35rem .75rem;
+    font-size:.8rem;
+    font-weight:700;
+}
+
+/* ---------- Filters ---------- */
+
+.filter-card{
+    background:#fff;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:1.25rem;
+    margin-bottom:2rem;
+}
+
+/* ---------- Buttons ---------- */
+
+.btn{
+    border-radius:10px;
+}
+
+/* ---------- Utilities ---------- */
+
+.shadow-soft{
+    box-shadow:var(--shadow);
+}
+
+.radius{
+    border-radius:var(--radius);
+}
+
+/* ---------- Footer ---------- */
+
+footer{
+    margin-top:auto;
+}
+
+/* ---------- Responsive ---------- */
+
+@media(max-width:768px){
+
+    .summary-value{
+        font-size:1.5rem;
+    }
+
+    .card-title-opd{
+        min-height:auto;
+    }
+
+    .rank-badge{
+        position:static;
+        display:inline-block;
+        margin-bottom:1rem;
+    }
+
+}
