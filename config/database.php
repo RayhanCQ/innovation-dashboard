@@ -6,7 +6,7 @@
  * Version : 1.0.0
  * ------------------------------------------------------------
  */
-// hawooo :3
+// hawooo bubuyyy :3
 
 require_once __DIR__ . '/config.php';
 
