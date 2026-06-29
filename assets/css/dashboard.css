@@ -1,0 +1,35 @@
+.dashboard-heading {
+    max-width: 760px;
+}
+
+.detail-toolbar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.detail-year-select {
+    width: 150px;
+}
+
+.table th {
+    color: #495057;
+    font-size: .82rem;
+    text-transform: uppercase;
+}
+
+@media (max-width: 575.98px) {
+    .detail-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .detail-toolbar form {
+        justify-content: space-between;
+    }
+
+    .detail-year-select {
+        width: 100%;
+    }
+}
