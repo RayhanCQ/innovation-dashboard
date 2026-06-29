@@ -1,16 +1,10 @@
 <?php
-/**
- * ------------------------------------------------------------
- * Innovation Dashboard
- * Helper Functions
- * Version : 1.0.0
- * ------------------------------------------------------------
- */
+declare(strict_types=1);
 
 if (!function_exists('e')) {
-    function e(?string $value): string
+    function e(mixed $value): string
     {
-        return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
     }
 }
 
@@ -23,7 +17,7 @@ if (!function_exists('redirect')) {
 }
 
 if (!function_exists('selected')) {
-    function selected($value, $current): string
+    function selected(mixed $value, mixed $current): string
     {
         return (string)$value === (string)$current ? 'selected' : '';
     }
@@ -39,11 +33,13 @@ if (!function_exists('activeMenu')) {
 if (!function_exists('formatDate')) {
     function formatDate(?string $date): string
     {
-        if (empty($date)) {
+        if ($date === null || $date === '') {
             return '-';
         }
 
-        return date('d F Y', strtotime($date));
+        $timestamp = strtotime($date);
+
+        return $timestamp === false ? '-' : date('d M Y', $timestamp);
     }
 }
 
@@ -62,42 +58,25 @@ if (!function_exists('cardIndicator')) {
     function cardIndicator(int $innovation): array
     {
         if ($innovation >= LEVEL_VERY_ACTIVE) {
-            return [
-                'class' => 'success',
-                'label' => 'Sangat Aktif'
-            ];
+            return ['class' => 'success', 'label' => 'Sangat Aktif'];
         }
 
         if ($innovation >= LEVEL_ACTIVE) {
-            return [
-                'class' => 'warning',
-                'label' => 'Aktif'
-            ];
+            return ['class' => 'warning', 'label' => 'Aktif'];
         }
 
         if ($innovation >= LEVEL_FAIR) {
-            return [
-                'class' => 'orange',
-                'label' => 'Cukup Aktif'
-            ];
+            return ['class' => 'orange', 'label' => 'Cukup Aktif'];
         }
 
-        return [
-            'class' => 'danger',
-            'label' => 'Kurang Aktif'
-        ];
+        return ['class' => 'danger', 'label' => 'Kurang Aktif'];
     }
 }
 
 if (!function_exists('rankingBadge')) {
     function rankingBadge(int $rank): string
     {
-        return match ($rank) {
-            1 => '🥇 #1',
-            2 => '🥈 #2',
-            3 => '🥉 #3',
-            default => '#' . $rank
-        };
+        return 'Rank #' . max(1, $rank);
     }
 }
 
@@ -108,7 +87,19 @@ if (!function_exists('statusBadge')) {
             STATUS_VERIFIED => 'success',
             STATUS_SUBMITTED => 'warning',
             STATUS_RETURNED => 'danger',
-            default => 'secondary'
+            default => 'secondary',
+        };
+    }
+}
+
+if (!function_exists('statusLabel')) {
+    function statusLabel(string $status): string
+    {
+        return match ($status) {
+            STATUS_VERIFIED => 'Terverifikasi',
+            STATUS_SUBMITTED => 'Diajukan',
+            STATUS_RETURNED => 'Dikembalikan',
+            default => ucfirst($status),
         };
     }
 }

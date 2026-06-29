@@ -1,13 +1,8 @@
 <?php
-/**
- * ------------------------------------------------------------
- * Innovation Dashboard
- * Statistics Helper
- * Semua query dashboard dipusatkan di sini.
- * ------------------------------------------------------------
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/functions.php';
 
 class Statistics
 {
@@ -20,142 +15,180 @@ class Statistics
 
     public function getAvailableYears(): array
     {
-        $sql = "SELECT DISTINCT YEAR(tanggal_inovasi) AS tahun
-                FROM innovations
-                ORDER BY tahun DESC";
+        $rows = $this->db->fetchAll(
+            "SELECT DISTINCT YEAR(tanggal_inovasi) AS tahun
+             FROM innovations
+             ORDER BY tahun DESC"
+        );
 
-        return $this->db->fetchAll($sql);
+        return array_map('intval', array_column($rows, 'tahun'));
     }
 
     public function getSummary(?int $year = null): array
     {
-        $params = [];
+        $totalOpd = $this->db->fetch("SELECT COUNT(*) AS total FROM opd");
 
-        $where = "";
+        $sql = "SELECT
+                    COUNT(CASE WHEN status = ? THEN 1 END) AS terverifikasi,
+                    COUNT(CASE WHEN status = ? THEN 1 END) AS diajukan,
+                    COUNT(CASE WHEN status = ? THEN 1 END) AS dikembalikan
+                FROM innovations";
+        $params = [STATUS_VERIFIED, STATUS_SUBMITTED, STATUS_RETURNED];
+
         if ($year !== null) {
-            $where = "WHERE YEAR(tanggal_inovasi)=?";
+            $sql .= " WHERE YEAR(tanggal_inovasi) = ?";
             $params[] = $year;
         }
 
-        $summary = [];
+        $row = $this->db->fetch($sql, $params) ?? [];
+        $verified = (int)($row['terverifikasi'] ?? 0);
 
-        $summary['total_opd'] = $this->db->fetch(
-            "SELECT COUNT(*) AS total FROM opd"
-        )['total'];
-
-        $summary['total_inovasi'] = $this->db->fetch(
-            "SELECT COUNT(*) AS total FROM innovations $where",
-            $params
-        )['total'];
-
-        $summary['terverifikasi'] = $this->db->fetch(
-            "SELECT COUNT(*) AS total FROM innovations
-             $where " . ($where ? "AND" : "WHERE") . " status=?",
-            array_merge($params, [STATUS_VERIFIED])
-        )['total'];
-
-        $summary['diajukan'] = $this->db->fetch(
-            "SELECT COUNT(*) AS total FROM innovations
-             $where " . ($where ? "AND" : "WHERE") . " status=?",
-            array_merge($params, [STATUS_SUBMITTED])
-        )['total'];
-
-        $summary['dikembalikan'] = $this->db->fetch(
-            "SELECT COUNT(*) AS total FROM innovations
-             $where " . ($where ? "AND" : "WHERE") . " status=?",
-            array_merge($params, [STATUS_RETURNED])
-        )['total'];
-
-        return $summary;
+        return [
+            'total_opd' => (int)($totalOpd['total'] ?? 0),
+            'total_inovasi' => $verified,
+            'terverifikasi' => $verified,
+            'diajukan' => (int)($row['diajukan'] ?? 0),
+            'dikembalikan' => (int)($row['dikembalikan'] ?? 0),
+        ];
     }
 
-    public function getOpdCards(?int $year = null, string $sort = 'DESC', string $keyword = ''): array
+    public function getDashboardCards(?int $year = null, string $sort = 'DESC', string $keyword = ''): array
     {
-        $params = [];
+        $sort = strtoupper($sort) === 'ASC' ? 'ASC' : 'DESC';
+        $params = [STATUS_VERIFIED];
+        $innovationYearSql = '';
+        $statisticsYearSql = '';
+        $statisticsParams = [];
+
+        if ($year !== null) {
+            $innovationYearSql = " AND YEAR(tanggal_inovasi) = ?";
+            $params[] = $year;
+            $statisticsYearSql = " WHERE tahun = ?";
+            $statisticsParams[] = $year;
+        }
 
         $sql = "
-        SELECT
-            o.id,
-            o.nama_opd,
-            COALESCE(s.total_inovator,0) AS total_inovator,
-            COUNT(i.id) AS total_inovasi
-        FROM opd o
-        LEFT JOIN innovations i
-            ON o.id=i.opd_id
-            AND i.status=?";
+            SELECT
+                o.id,
+                o.nama_opd,
+                COALESCE(s.total_inovator, 0) AS total_inovator,
+                COALESCE(i.total_inovasi, 0) AS total_inovasi
+            FROM opd o
+            LEFT JOIN (
+                SELECT opd_id, COUNT(*) AS total_inovasi
+                FROM innovations
+                WHERE status = ?{$innovationYearSql}
+                GROUP BY opd_id
+            ) i ON i.opd_id = o.id
+            LEFT JOIN (
+                SELECT opd_id, SUM(total_inovator) AS total_inovator
+                FROM opd_statistics
+                {$statisticsYearSql}
+                GROUP BY opd_id
+            ) s ON s.opd_id = o.id";
 
-        $params[] = STATUS_VERIFIED;
-
-        if ($year !== null) {
-            $sql .= " AND YEAR(i.tanggal_inovasi)=?";
-            $params[] = $year;
-        }
-
-        $sql .= "
-        LEFT JOIN opd_statistics s
-            ON o.id=s.opd_id";
-
-        if ($year !== null) {
-            $sql .= " AND s.tahun=?";
-            $params[] = $year;
-        }
-
-        $sql .= " WHERE 1=1";
+        $params = array_merge($params, $statisticsParams);
+        $keyword = trim($keyword);
 
         if ($keyword !== '') {
-            $sql .= " AND o.nama_opd LIKE ?";
-            $params[] = "%{$keyword}%";
+            $sql .= " WHERE o.nama_opd LIKE ?";
+            $params[] = '%' . $keyword . '%';
         }
 
-        $sort = strtoupper($sort) === 'ASC' ? 'ASC' : 'DESC';
-
-        $sql .= "
-        GROUP BY o.id,o.nama_opd,s.total_inovator
-        ORDER BY total_inovasi {$sort}, o.nama_opd ASC";
-
+        $sql .= " ORDER BY total_inovasi {$sort}, o.nama_opd ASC";
         $rows = $this->db->fetchAll($sql, $params);
 
-        foreach ($rows as $i => &$row) {
-            $row['ranking'] = $i + 1;
-            $row['rasio'] = formatRatio(
-                (int)$row['total_inovasi'],
-                (int)$row['total_inovator']
-            );
-            $row['indicator'] = cardIndicator((int)$row['total_inovasi']);
+        foreach ($rows as $index => &$row) {
+            $row['total_inovator'] = (int)$row['total_inovator'];
+            $row['total_inovasi'] = (int)$row['total_inovasi'];
+            $row['ranking'] = $index + 1;
+            $row['rasio'] = formatRatio($row['total_inovasi'], $row['total_inovator']);
+            $row['indicator'] = cardIndicator($row['total_inovasi']);
         }
+        unset($row);
 
         return $rows;
     }
 
-    public function getOpdDetail(int $opdId): ?array
+    public function getOpd(int $opdId): ?array
     {
         return $this->db->fetch(
-            "SELECT * FROM opd WHERE id=?",
+            "SELECT id, nama_opd, created_at, updated_at
+             FROM opd
+             WHERE id = ?",
             [$opdId]
         );
+    }
+
+    public function getOpdMetrics(int $opdId, ?int $year = null): array
+    {
+        $params = [STATUS_VERIFIED];
+        $innovationYearSql = '';
+        $statisticsYearSql = '';
+        $statisticsParams = [];
+
+        if ($year !== null) {
+            $innovationYearSql = " AND YEAR(tanggal_inovasi) = ?";
+            $params[] = $year;
+            $statisticsYearSql = " WHERE tahun = ?";
+            $statisticsParams[] = $year;
+        }
+
+        $sql = "
+            SELECT
+                COALESCE(s.total_inovator, 0) AS total_inovator,
+                COALESCE(i.total_inovasi, 0) AS total_inovasi
+            FROM opd o
+            LEFT JOIN (
+                SELECT opd_id, COUNT(*) AS total_inovasi
+                FROM innovations
+                WHERE status = ?{$innovationYearSql}
+                GROUP BY opd_id
+            ) i ON i.opd_id = o.id
+            LEFT JOIN (
+                SELECT opd_id, SUM(total_inovator) AS total_inovator
+                FROM opd_statistics
+                {$statisticsYearSql}
+                GROUP BY opd_id
+            ) s ON s.opd_id = o.id
+            WHERE o.id = ?";
+
+        $row = $this->db->fetch($sql, array_merge($params, $statisticsParams, [$opdId])) ?? [];
+        $innovation = (int)($row['total_inovasi'] ?? 0);
+        $innovator = (int)($row['total_inovator'] ?? 0);
+
+        return [
+            'total_inovator' => $innovator,
+            'total_inovasi' => $innovation,
+            'rasio' => formatRatio($innovation, $innovator),
+        ];
     }
 
     public function getInnovationList(int $opdId, ?int $year = null): array
     {
         $params = [$opdId];
-
-        $sql = "
-        SELECT
-            judul_inovasi,
-            tanggal_inovasi,
-            status
-        FROM innovations
-        WHERE opd_id=?";
+        $sql = "SELECT id, judul_inovasi, deskripsi, tanggal_inovasi, status
+                FROM innovations
+                WHERE opd_id = ?";
 
         if ($year !== null) {
-            $sql .= " AND YEAR(tanggal_inovasi)=?";
+            $sql .= " AND YEAR(tanggal_inovasi) = ?";
             $params[] = $year;
         }
 
-        $sql .= "
-        ORDER BY tanggal_inovasi DESC";
+        $sql .= " ORDER BY tanggal_inovasi DESC, id DESC";
 
         return $this->db->fetchAll($sql, $params);
+    }
+
+    public function getOpdCards(?int $year = null, string $sort = 'DESC', string $keyword = ''): array
+    {
+        return $this->getDashboardCards($year, $sort, $keyword);
+    }
+
+    public function getOpdDetail(int $opdId): ?array
+    {
+        return $this->getOpd($opdId);
     }
 }
 
